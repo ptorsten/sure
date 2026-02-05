@@ -313,6 +313,12 @@ Rails.application.routes.draw do
       # Current user endpoint
       get "users/me", to: "users#me"
 
+      # Push notification subscriptions
+      resources :push_subscriptions, only: [ :create, :destroy ]
+
+      # Push notification configuration (no auth required)
+      get "push/config", to: "push_config#show"
+
       # Production API endpoints
       resources :accounts, only: [ :index, :show ]
       resources :categories, only: [ :index, :show ]

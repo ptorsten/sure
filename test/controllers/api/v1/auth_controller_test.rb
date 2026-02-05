@@ -55,8 +55,8 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     assert_equal @device_info[:device_type], device.device_type
   end
 
-  test "should not signup without device info" do
-    assert_no_difference("User.count") do
+  test "should signup without device info using web client" do
+    assert_difference("User.count", 1) do
       post "/api/v1/auth/signup", params: {
         user: {
           email: "newuser@example.com",
@@ -67,9 +67,10 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
       }
     end
 
-    assert_response :bad_request
+    assert_response :created
     response_data = JSON.parse(response.body)
-    assert_equal "Device information is required", response_data["error"]
+    assert response_data["access_token"].present?
+    assert response_data["refresh_token"].present?
   end
 
   test "should not signup with invalid password" do
@@ -332,19 +333,20 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Invalid email or password", response_data["error"]
   end
 
-  test "should not login without device info" do
+  test "should login without device info using web client" do
     user = users(:family_admin)
 
-    assert_no_difference("Doorkeeper::AccessToken.count") do
+    assert_difference("Doorkeeper::AccessToken.count", 1) do
       post "/api/v1/auth/login", params: {
         email: user.email,
         password: user_password_test
       }
     end
 
-    assert_response :bad_request
+    assert_response :success
     response_data = JSON.parse(response.body)
-    assert_equal "Device information is required", response_data["error"]
+    assert response_data["access_token"].present?
+    assert response_data["refresh_token"].present?
   end
 
   test "should refresh access token with valid refresh token" do
