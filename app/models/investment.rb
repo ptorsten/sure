@@ -42,6 +42,7 @@ class Investment < ApplicationRecord
 
     # === Europe ===
     "pea" => { short: "PEA", long: "Plan d'Épargne en Actions", region: "eu", tax_treatment: :tax_advantaged },
+    "isk" => { short: "ISK", long: "Investeringssparkonto", region: "eu", tax_treatment: :tax_advantaged },
     "pillar_3a" => { short: "Pillar 3a", long: "Private Pension (Pillar 3a)", region: "eu", tax_treatment: :tax_deferred },
     "riester" => { short: "Riester", long: "Riester-Rente", region: "eu", tax_treatment: :tax_deferred },
 
@@ -81,6 +82,7 @@ class Investment < ApplicationRecord
       "GBP" => "uk",
       "CAD" => "ca",
       "AUD" => "au",
+      "SEK" => "eu",
       "EUR" => "eu",
       "CHF" => "eu"
     }.freeze

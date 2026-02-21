@@ -99,6 +99,11 @@ class InvestmentTest < ActiveSupport::TestCase
     assert_equal :tax_advantaged, investment.tax_treatment
   end
 
+  test "tax_treatment returns tax_advantaged for Swedish ISK" do
+    investment = Investment.new(subtype: "isk")
+    assert_equal :tax_advantaged, investment.tax_treatment
+  end
+
   # Generic account types
 
   test "tax_treatment returns tax_deferred for generic pension and retirement" do
