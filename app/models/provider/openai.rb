@@ -238,7 +238,8 @@ class Provider::Openai < Provider
         collected_chunks = []
 
         # Proxy that converts raw stream to "LLM Provider concept" stream
-        stream_proxy = if streamer.present?
+        # Only enable streaming for custom providers when the streaming flag is on
+        stream_proxy = if streamer.present? && (!custom_provider? || Setting.openai_streaming)
           proc do |chunk|
             parsed_chunk = ChatStreamParser.new(chunk).parsed
 
