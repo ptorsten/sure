@@ -232,7 +232,8 @@ class Provider::Openai < Provider
       with_provider_response do
         chat_config = ChatConfig.new(
           functions: functions,
-          function_results: function_results
+          function_results: function_results,
+          include_function_calls: custom_provider?
         )
 
         collected_chunks = []
@@ -255,14 +256,21 @@ class Provider::Openai < Provider
         input_payload = chat_config.build_input(prompt)
 
         begin
-          raw_response = client.responses.create(parameters: {
+          request_params = {
             model: model,
             input: input_payload,
             instructions: instructions,
             tools: chat_config.tools,
-            previous_response_id: previous_response_id,
+            previous_response_id: custom_provider? ? nil : previous_response_id,
             stream: stream_proxy
-          })
+          }
+
+          if custom_provider?
+            loggable_params = request_params.except(:stream).merge(stream: stream_proxy.present?)
+            Rails.logger.info("[OpenAI] Responses API request to custom provider: uri_base=#{@uri_base} params=#{loggable_params.to_json}")
+          end
+
+          raw_response = client.responses.create(parameters: request_params)
 
           # If streaming, Ruby OpenAI does not return anything, so to normalize this method's API, we search
           # for the "response chunk" in the stream and return it (it is already parsed)
@@ -298,6 +306,10 @@ class Provider::Openai < Provider
             parsed
           end
         rescue => e
+          if custom_provider?
+            Rails.logger.error("[OpenAI] Responses API error from custom provider: #{e.class} - #{e.message}")
+            Rails.logger.error("[OpenAI] Response body: #{e.response[:body]}" ) if e.respond_to?(:response) && e.response.is_a?(Hash)
+          end
           log_langfuse_generation(
             name: "chat_response",
             model: model,
