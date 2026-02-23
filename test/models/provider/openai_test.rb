@@ -277,6 +277,49 @@ class Provider::OpenaiTest < ActiveSupport::TestCase
     assert_equal expected, @subject.supported_models_description
   end
 
+  test "custom provider uses native_chat_response when streaming is enabled" do
+    Setting.stubs(:openai_streaming).returns(true)
+
+    custom_provider = Provider::Openai.new(
+      "test-token",
+      uri_base: "https://custom-api.example.com/v1",
+      model: "custom-model"
+    )
+
+    # When streaming is enabled, custom provider should use native_chat_response (Responses API)
+    # which calls client.responses.create, not client.chat
+    mock_responses = mock("responses")
+    mock_responses.expects(:create).returns({
+      "id" => "resp_123",
+      "output" => [ { "type" => "message", "content" => [ { "type" => "output_text", "text" => "Hello" } ] } ],
+      "usage" => { "input_tokens" => 10, "output_tokens" => 5, "total_tokens" => 15 }
+    })
+    custom_provider.send(:client).stubs(:responses).returns(mock_responses)
+
+    response = custom_provider.chat_response("Hello", model: "custom-model")
+    assert response.success?
+  end
+
+  test "custom provider uses generic_chat_response when streaming is disabled" do
+    Setting.stubs(:openai_streaming).returns(false)
+
+    custom_provider = Provider::Openai.new(
+      "test-token",
+      uri_base: "https://custom-api.example.com/v1",
+      model: "custom-model"
+    )
+
+    # When streaming is disabled, custom provider should use generic_chat_response
+    # which calls client.chat, not client.responses.create
+    custom_provider.send(:client).expects(:chat).returns({
+      "choices" => [ { "message" => { "role" => "assistant", "content" => "Hello" } } ],
+      "usage" => { "prompt_tokens" => 10, "completion_tokens" => 5, "total_tokens" => 15 }
+    })
+
+    response = custom_provider.chat_response("Hello", model: "custom-model")
+    assert response.success?
+  end
+
   test "supported_models_description returns configured model for custom provider" do
     custom_provider = Provider::Openai.new(
       "test-token",

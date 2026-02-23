@@ -77,5 +77,12 @@
                   { disabled: ENV["OPENAI_INSTRUCTION_TYPE"].present?,
                     data: { "auto-submit-form-target": "auto" } } %>
   <p class="text-xs text-secondary mt-1"><%= t(".instruction_type_help") %></p>
+
+  <%= form.check_box :openai_streaming,
+                     label: t(".streaming_label"),
+                     checked: Setting.openai_streaming,
+                     disabled: ENV["OPENAI_STREAMING"].present?,
+                     data: { "auto-submit-form-target": "auto" } %>
+  <p class="text-xs text-secondary mt-1"><%= t(".streaming_help") %></p>
   <% end %>
 </div>
