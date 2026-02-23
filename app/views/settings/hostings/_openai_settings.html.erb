@@ -78,11 +78,22 @@
                     data: { "auto-submit-form-target": "auto" } } %>
   <p class="text-xs text-secondary mt-1"><%= t(".instruction_type_help") %></p>
 
-  <%= form.check_box :openai_streaming,
-                     label: t(".streaming_label"),
-                     checked: Setting.openai_streaming,
-                     disabled: ENV["OPENAI_STREAMING"].present?,
-                     data: { "auto-submit-form-target": "auto" } %>
-  <p class="text-xs text-secondary mt-1"><%= t(".streaming_help") %></p>
   <% end %>
+
+  <div class="flex items-center justify-between">
+    <div class="space-y-1">
+      <p class="text-sm"><%= t(".streaming_label") %></p>
+      <p class="text-secondary text-sm"><%= t(".streaming_help") %></p>
+    </div>
+
+    <%= styled_form_with model: Setting.new,
+                         url: settings_hosting_path,
+                         method: :patch,
+                         data: { controller: "auto-submit-form", auto_submit_form_trigger_event_value: "change" } do |form| %>
+      <%= form.toggle :openai_streaming,
+                      checked: Setting.openai_streaming,
+                      disabled: ENV["OPENAI_STREAMING"].present?,
+                      data: { auto_submit_form_target: "auto" } %>
+    <% end %>
+  </div>
 </div>
