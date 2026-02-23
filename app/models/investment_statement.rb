@@ -35,18 +35,18 @@ class InvestmentStatement
     t.contributions - t.withdrawals
   end
 
-  # Total portfolio value across all investment accounts
+  # Total portfolio value across all investment accounts (converted to family currency)
   def portfolio_value
-    investment_accounts.sum(&:balance)
+    investment_accounts.sum { |a| converted_balance_for(a) }
   end
 
   def portfolio_value_money
     Money.new(portfolio_value, family.currency)
   end
 
-  # Total cash in investment accounts
+  # Total cash in investment accounts (converted to family currency)
   def cash_balance
-    investment_accounts.sum(&:cash_balance)
+    investment_accounts.sum { |a| converted_cash_balance_for(a) }
   end
 
   def cash_balance_money
@@ -180,6 +180,28 @@ class InvestmentStatement
     end
 
     HoldingAllocation = Data.define(:security, :amount, :weight, :trend)
+
+    # Batch-fetches today's exchange rates for all foreign currencies in investment accounts.
+    def exchange_rates
+      @exchange_rates ||= begin
+        foreign_currencies = investment_accounts.filter_map { |a| a.currency if a.currency != family.currency }
+        ExchangeRate.rates_for(foreign_currencies, to: family.currency, date: Date.current)
+      end
+    end
+
+    def converted_balance_for(account)
+      return account.balance if account.currency == family.currency
+
+      rate = exchange_rates[account.currency]
+      account.balance * rate
+    end
+
+    def converted_cash_balance_for(account)
+      return account.cash_balance if account.currency == family.currency
+
+      rate = exchange_rates[account.currency]
+      account.cash_balance * rate
+    end
 
     def totals_query(trades_scope:)
       sql_hash = Digest::MD5.hexdigest(trades_scope.to_sql)
