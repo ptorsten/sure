@@ -386,12 +386,6 @@ Rails.application.routes.draw do
       post "auth/sso_exchange", to: "auth#sso_exchange"
       patch "auth/enable_ai", to: "auth#enable_ai"
 
-      # Health check endpoint (no auth required)
-      get "health", to: "health#show"
-
-      # Current user endpoint
-      get "users/me", to: "users#me"
-
       # Production API endpoints
       resources :accounts, only: [ :index, :show ]
       resources :categories, only: [ :index, :show ]
@@ -411,6 +405,9 @@ Rails.application.routes.draw do
           post :retry, on: :collection
         end
       end
+
+      delete "users/reset", to: "users#reset"
+      delete "users/me", to: "users#destroy"
 
       # Test routes for API controller testing (only available in test environment)
       if Rails.env.test?
@@ -489,6 +486,9 @@ Rails.application.routes.draw do
   end
 
   get "redis-configuration-error", to: "pages#redis_configuration_error"
+
+  # MCP server endpoint for external AI assistants (JSON-RPC 2.0)
+  post "mcp", to: "mcp#handle"
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.

@@ -1,18 +1,27 @@
 # frozen_string_literal: true
 
-module Api
-  module V1
-    class UsersController < BaseController
-      def me
-        user = current_resource_owner
+class Api::V1::UsersController < Api::V1::BaseController
+  before_action :ensure_write_scope
 
-        render json: {
-          id: user.id.to_s,
-          email: user.email,
-          name: [ user.first_name, user.last_name ].compact.join(" "),
-          created_at: user.created_at.iso8601
-        }
-      end
+  def reset
+    FamilyResetJob.perform_later(Current.family)
+    render json: { message: "Account reset has been initiated" }
+  end
+
+  def destroy
+    user = current_resource_owner
+
+    if user.deactivate
+      Current.session&.destroy
+      render json: { message: "Account has been deleted" }
+    else
+      render json: { error: "Failed to delete account", details: user.errors.full_messages }, status: :unprocessable_entity
     end
   end
+
+  private
+
+    def ensure_write_scope
+      authorize_scope!(:write)
+    end
 end
