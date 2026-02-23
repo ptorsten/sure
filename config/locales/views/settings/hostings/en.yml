@@ -62,6 +62,8 @@ en:
         instruction_type_detailed: Detailed (best for capable models)
         instruction_type_simple: Simple (best for smaller models)
         instruction_type_help: "Controls the level of detail in AI prompts. Auto uses simple instructions for custom providers and detailed for native OpenAI. Use Detailed if your custom provider runs a capable model."
+        streaming_label: Enable streaming
+        streaming_help: "Enable real-time streaming for custom OpenAI-compatible providers. Only enable if your provider supports the OpenAI Responses API."
         title: OpenAI
       yahoo_finance_settings:
         title: Yahoo Finance

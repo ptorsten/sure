@@ -11,6 +11,7 @@ class Setting < RailsSettings::Base
   field :openai_model, type: :string, default: ENV["OPENAI_MODEL"]
   field :openai_json_mode, type: :string, default: ENV["LLM_JSON_MODE"]
   field :openai_instruction_type, type: :string, default: ENV["OPENAI_INSTRUCTION_TYPE"]
+  field :openai_streaming, type: :boolean, default: ENV.fetch("OPENAI_STREAMING", "false") == "true"
   field :brand_fetch_client_id, type: :string, default: ENV["BRAND_FETCH_CLIENT_ID"]
   field :brand_fetch_high_res_logos, type: :boolean, default: ENV.fetch("BRAND_FETCH_HIGH_RES_LOGOS", "false") == "true"
 

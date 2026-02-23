@@ -186,7 +186,7 @@ class Provider::Openai < Provider
     user_identifier: nil,
     family: nil
   )
-    if custom_provider?
+    if custom_provider? && !Setting.openai_streaming
       generic_chat_response(
         prompt: prompt,
         model: model,
