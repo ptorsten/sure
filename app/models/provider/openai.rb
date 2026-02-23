@@ -308,7 +308,7 @@ class Provider::Openai < Provider
         rescue => e
           if custom_provider?
             Rails.logger.error("[OpenAI] Responses API error from custom provider: #{e.class} - #{e.message}")
-            Rails.logger.error("[OpenAI] Response body: #{e.response[:body]}" ) if e.respond_to?(:response) && e.response.is_a?(Hash)
+            Rails.logger.error("[OpenAI] Response body: #{e.response[:body]}") if e.respond_to?(:response) && e.response.is_a?(Hash)
           end
           log_langfuse_generation(
             name: "chat_response",
