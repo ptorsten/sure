@@ -13,11 +13,13 @@ class Assistant::Responder
   def respond(previous_response_id: nil)
     # Track whether response was handled by streamer
     response_handled = false
+    output_text_emitted = false
 
     # For the first response
     streamer = proc do |chunk|
       case chunk.type
       when "output_text"
+        output_text_emitted = true
         emit(:output_text, chunk.data)
       when "response"
         response = chunk.data
@@ -26,6 +28,8 @@ class Assistant::Responder
         if response.function_requests.any?
           handle_follow_up_response(response)
         else
+          # If no output_text deltas were streamed, extract text from the final response
+          emit_response_text(response) unless output_text_emitted
           emit(:response, { id: response.id })
         end
       end
@@ -38,6 +42,7 @@ class Assistant::Responder
       if response && response.function_requests.any?
         handle_follow_up_response(response)
       elsif response
+        emit_response_text(response)
         emit(:response, { id: response.id })
       end
     end
@@ -47,12 +52,16 @@ class Assistant::Responder
     attr_reader :message, :instructions, :function_tool_caller, :llm
 
     def handle_follow_up_response(response)
+      follow_up_text_emitted = false
+
       streamer = proc do |chunk|
         case chunk.type
         when "output_text"
+          follow_up_text_emitted = true
           emit(:output_text, chunk.data)
         when "response"
           # We do not currently support function executions for a follow-up response (avoid recursive LLM calls that could lead to high spend)
+          emit_response_text(chunk.data) unless follow_up_text_emitted
           emit(:response, { id: chunk.data.id })
         end
       end
@@ -91,6 +100,17 @@ class Assistant::Responder
       end
 
       response.data
+    end
+
+    # Extracts text content from a completed response and emits it as :output_text.
+    # Used as a fallback when streaming deltas were not received (e.g., some custom providers).
+    def emit_response_text(response)
+      return unless response.respond_to?(:messages)
+
+      response.messages.each do |msg|
+        text = msg.output_text
+        emit(:output_text, text) if text.present?
+      end
     end
 
     def emit(event_name, payload = nil)

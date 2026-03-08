@@ -244,6 +244,10 @@ class Provider::Openai < Provider
           proc do |chunk|
             parsed_chunk = ChatStreamParser.new(chunk).parsed
 
+            if parsed_chunk.nil? && custom_provider?
+              Rails.logger.debug("[OpenAI] Unhandled stream event from custom provider: type=#{chunk.dig('type')}")
+            end
+
             unless parsed_chunk.nil?
               streamer.call(parsed_chunk)
               collected_chunks << parsed_chunk

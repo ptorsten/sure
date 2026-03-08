@@ -661,7 +661,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_18_120001) do
     t.string "amount_type_strategy", default: "signed_amount"
     t.string "amount_type_inflow_value"
     t.integer "rows_count", default: 0, null: false
-t.integer "rows_to_skip", default: 0, null: false
+    t.integer "rows_to_skip", default: 0, null: false
     t.string "amount_type_identifier_value"
     t.text "ai_summary"
     t.string "document_type"
