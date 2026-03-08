@@ -55,12 +55,12 @@ class Assistant::Builtin < Assistant::Base
     responder.on(:response) do |data|
       update_thinking("Analyzing your data...")
       if data[:function_tool_calls].present?
-        # Ensure assistant_message is persisted before setting tool_calls association.
-        # When the LLM responds with only function calls (no text), the message hasn't
-        # been saved yet, and setting has_many would fail validation on blank content.
-        unless assistant_message.persisted?
-          assistant_message.save!(validate: false)
-        end
+        # Clear any text that was streamed before function calls were detected.
+        # Some providers (e.g., vLLM) emit function call arguments as text deltas
+        # before the response.completed event, which would get prepended to the
+        # actual follow-up response text.
+        assistant_message.content = ""
+        assistant_message.save!(validate: false)
         assistant_message.tool_calls = data[:function_tool_calls]
         latest_response_id = data[:id]
       else
