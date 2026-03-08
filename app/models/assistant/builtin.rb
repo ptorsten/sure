@@ -39,6 +39,8 @@ class Assistant::Builtin < Assistant::Base
     latest_response_id = chat.latest_assistant_response_id
 
     responder.on(:output_text) do |text|
+      next if text.blank?
+
       if assistant_message.content.blank?
         stop_thinking
         Chat.transaction do
@@ -53,6 +55,12 @@ class Assistant::Builtin < Assistant::Base
     responder.on(:response) do |data|
       update_thinking("Analyzing your data...")
       if data[:function_tool_calls].present?
+        # Ensure assistant_message is persisted before setting tool_calls association.
+        # When the LLM responds with only function calls (no text), the message hasn't
+        # been saved yet, and setting has_many would fail validation on blank content.
+        unless assistant_message.persisted?
+          assistant_message.save!(validate: false)
+        end
         assistant_message.tool_calls = data[:function_tool_calls]
         latest_response_id = data[:id]
       else
