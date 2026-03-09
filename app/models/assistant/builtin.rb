@@ -37,11 +37,19 @@ class Assistant::Builtin < Assistant::Base
     )
 
     latest_response_id = chat.latest_assistant_response_id
+    replace_content_on_next_text = false
 
     responder.on(:output_text) do |text|
       next if text.blank?
 
-      if assistant_message.content.blank?
+      # When the previous response had function calls, some providers (e.g., vLLM)
+      # may have streamed function call arguments as text. Replace that content
+      # with the actual follow-up response text instead of appending.
+      if replace_content_on_next_text
+        replace_content_on_next_text = false
+        assistant_message.content = text
+        assistant_message.save!(validate: false)
+      elsif assistant_message.content.blank?
         stop_thinking
         Chat.transaction do
           assistant_message.append_text!(text)
@@ -55,14 +63,15 @@ class Assistant::Builtin < Assistant::Base
     responder.on(:response) do |data|
       update_thinking("Analyzing your data...")
       if data[:function_tool_calls].present?
-        # Clear any text that was streamed before function calls were detected.
-        # Some providers (e.g., vLLM) emit function call arguments as text deltas
-        # before the response.completed event, which would get prepended to the
-        # actual follow-up response text.
-        assistant_message.content = ""
-        assistant_message.save!(validate: false)
+        # Ensure assistant_message is persisted before setting tool_calls association.
+        unless assistant_message.persisted?
+          assistant_message.save!(validate: false)
+        end
         assistant_message.tool_calls = data[:function_tool_calls]
         latest_response_id = data[:id]
+        # Flag to replace (not append) content on the next output_text event,
+        # discarding any function call argument text streamed by the provider.
+        replace_content_on_next_text = true
       else
         chat.update_latest_response!(data[:id])
       end
