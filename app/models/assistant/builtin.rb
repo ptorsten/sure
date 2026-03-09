@@ -53,10 +53,16 @@ class Assistant::Builtin < Assistant::Base
         assistant_message.content = text
         assistant_message.save!(validate: false)
       elsif !assistant_message.persisted?
-        stop_thinking
-        Chat.transaction do
-          assistant_message.append_text!(text)
-          chat.update_latest_response!(latest_response_id)
+        # Buffer text until content passes presence validation.
+        # Early whitespace-only deltas (e.g., "\n") would fail save!
+        # but we still want to preserve them in the final content.
+        assistant_message.content += text
+        if assistant_message.content.present?
+          stop_thinking
+          Chat.transaction do
+            assistant_message.save!
+            chat.update_latest_response!(latest_response_id)
+          end
         end
       else
         assistant_message.append_text!(text)
