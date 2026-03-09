@@ -42,10 +42,13 @@ class Assistant::Builtin < Assistant::Base
     responder.on(:output_text) do |text|
       next if text.blank?
 
+      Rails.logger.debug("[Assistant] output_text delta: #{text.truncate(200).inspect}")
+
       # When the previous response had function calls, some providers (e.g., vLLM)
       # may have streamed function call arguments as text. Replace that content
       # with the actual follow-up response text instead of appending.
       if replace_content_on_next_text
+        Rails.logger.info("[Assistant] Replacing content (was: #{assistant_message.content.truncate(100).inspect})")
         replace_content_on_next_text = false
         assistant_message.content = text
         assistant_message.save!(validate: false)
@@ -63,6 +66,8 @@ class Assistant::Builtin < Assistant::Base
     responder.on(:response) do |data|
       update_thinking("Analyzing your data...")
       if data[:function_tool_calls].present?
+        tool_names = data[:function_tool_calls].map(&:function_name).join(", ")
+        Rails.logger.info("[Assistant] Response with function calls: #{tool_names}")
         # Ensure assistant_message is persisted before setting tool_calls association.
         unless assistant_message.persisted?
           assistant_message.save!(validate: false)
@@ -73,11 +78,14 @@ class Assistant::Builtin < Assistant::Base
         # discarding any function call argument text streamed by the provider.
         replace_content_on_next_text = true
       else
+        Rails.logger.info("[Assistant] Response complete (id: #{data[:id]})")
         chat.update_latest_response!(data[:id])
       end
     end
 
     responder.respond(previous_response_id: latest_response_id)
+
+    Rails.logger.info("[Assistant] Final message content: #{assistant_message.content.truncate(500).inspect}")
   rescue => e
     stop_thinking
     chat.add_error(e)
