@@ -40,7 +40,7 @@ class Assistant::Builtin < Assistant::Base
     replace_content_on_next_text = false
 
     responder.on(:output_text) do |text|
-      next if text.blank?
+      next if text.nil? || text.empty?
 
       Rails.logger.debug("[Assistant] output_text delta: #{text.truncate(200).inspect}")
 
@@ -52,7 +52,7 @@ class Assistant::Builtin < Assistant::Base
         replace_content_on_next_text = false
         assistant_message.content = text
         assistant_message.save!(validate: false)
-      elsif assistant_message.content.blank?
+      elsif !assistant_message.persisted?
         stop_thinking
         Chat.transaction do
           assistant_message.append_text!(text)
