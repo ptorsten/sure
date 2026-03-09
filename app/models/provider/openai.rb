@@ -486,7 +486,7 @@ class Provider::Openai < Provider
         return
       end
 
-      @langfuse_client = Langfuse.new
+      @langfuse_client = Langfuse.new(debug: true)
     end
 
     def create_langfuse_trace(name:, input:, session_id: nil, user_identifier: nil)
