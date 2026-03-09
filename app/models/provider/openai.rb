@@ -481,7 +481,10 @@ class Provider::Openai < Provider
     end
 
     def langfuse_client
-      return unless ENV["LANGFUSE_PUBLIC_KEY"].present? && ENV["LANGFUSE_SECRET_KEY"].present?
+      unless ENV["LANGFUSE_PUBLIC_KEY"].present? && ENV["LANGFUSE_SECRET_KEY"].present?
+        Rails.logger.debug("[Langfuse] Client not configured (missing LANGFUSE_PUBLIC_KEY or LANGFUSE_SECRET_KEY)")
+        return
+      end
 
       @langfuse_client = Langfuse.new
     end
@@ -489,6 +492,7 @@ class Provider::Openai < Provider
     def create_langfuse_trace(name:, input:, session_id: nil, user_identifier: nil)
       return unless langfuse_client
 
+      Rails.logger.debug("[Langfuse] Creating trace: name=#{name} session_id=#{session_id}")
       langfuse_client.trace(
         name: name,
         input: input,
@@ -497,12 +501,19 @@ class Provider::Openai < Provider
         environment: Rails.env
       )
     rescue => e
-      Rails.logger.warn("Langfuse trace creation failed: #{e.message}\n#{e.full_message}")
+      Rails.logger.warn("[Langfuse] Trace creation failed: #{e.class} - #{e.message}\n#{e.full_message}")
       nil
     end
 
     def log_langfuse_generation(name:, model:, input:, output: nil, usage: nil, error: nil, session_id: nil, user_identifier: nil)
-      return unless langfuse_client
+      Rails.logger.debug("[Langfuse] log_langfuse_generation called: name=#{name} model=#{model} session_id=#{session_id} error=#{error&.class}")
+
+      unless langfuse_client
+        Rails.logger.debug("[Langfuse] Skipping - no langfuse client configured")
+        return
+      end
+
+      Rails.logger.info("[Langfuse] Creating trace: openai.#{name} (session=#{session_id}, user=#{user_identifier})")
 
       trace = create_langfuse_trace(
         name: "openai.#{name}",
@@ -511,13 +522,18 @@ class Provider::Openai < Provider
         user_identifier: user_identifier
       )
 
+      Rails.logger.debug("[Langfuse] Trace created: id=#{trace&.id}")
+
       generation = trace&.generation(
         name: name,
         model: model,
         input: input
       )
 
+      Rails.logger.debug("[Langfuse] Generation created: id=#{generation&.id}")
+
       if error
+        Rails.logger.info("[Langfuse] Logging error: #{error.class} - #{error.message.truncate(200)}")
         generation&.end(
           output: { error: error.message, details: error.respond_to?(:details) ? error.details : nil },
           level: "ERROR"
@@ -528,15 +544,23 @@ class Provider::Openai < Provider
           level: "ERROR"
         )
       else
+        output_preview = case output
+                         when String then output.truncate(200)
+                         when Hash then output.keys.join(", ")
+                         else output.class.name
+                         end
+        Rails.logger.info("[Langfuse] Logging success: output=#{output_preview} usage=#{usage.inspect}")
         generation&.end(output: output, usage: usage)
         upsert_langfuse_trace(trace: trace, output: output)
       end
     rescue => e
-      Rails.logger.warn("Langfuse logging failed: #{e.message}\n#{e.full_message}")
+      Rails.logger.warn("[Langfuse] Logging failed: #{e.class} - #{e.message}\n#{e.full_message}")
     end
 
     def upsert_langfuse_trace(trace:, output:, level: nil)
       return unless langfuse_client && trace&.id
+
+      Rails.logger.debug("[Langfuse] Upserting trace: id=#{trace.id} level=#{level}")
 
       payload = {
         id: trace.id,
@@ -546,7 +570,7 @@ class Provider::Openai < Provider
 
       langfuse_client.trace(**payload)
     rescue => e
-      Rails.logger.warn("Langfuse trace upsert failed for trace_id=#{trace&.id}: #{e.message}\n#{e.full_message}")
+      Rails.logger.warn("[Langfuse] Trace upsert failed for trace_id=#{trace&.id}: #{e.class} - #{e.message}\n#{e.full_message}")
       nil
     end
 

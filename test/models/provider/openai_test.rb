@@ -343,6 +343,7 @@ class Provider::OpenaiTest < ActiveSupport::TestCase
   test "log_langfuse_generation upserts trace through client" do
     trace = Struct.new(:id).new("trace_456")
     generation = mock
+    generation.stubs(:id).returns("gen_789")
     fake_client = mock
 
     @subject.stubs(:langfuse_client).returns(fake_client)
@@ -369,7 +370,7 @@ class Provider::OpenaiTest < ActiveSupport::TestCase
     @subject.stubs(:langfuse_client).returns(fake_client)
     fake_client.expects(:trace).raises(error)
 
-    Rails.logger.expects(:warn).with(regexp_matches(/Langfuse trace creation failed: boom.*test\/models\/provider\/openai_test\.rb/m))
+    Rails.logger.expects(:warn).with(regexp_matches(/\[Langfuse\] Trace creation failed: StandardError - boom/m))
 
     @subject.send(:create_langfuse_trace, name: "openai.test", input: { foo: "bar" })
   end
