@@ -544,11 +544,7 @@ class Provider::Openai < Provider
           level: "ERROR"
         )
       else
-        output_preview = case output
-                         when String then output.truncate(200)
-                         when Hash then output.keys.join(", ")
-                         else output.class.name
-                         end
+        output_preview = output.is_a?(String) ? output.truncate(200) : output.class.name
         Rails.logger.info("[Langfuse] Logging success: output=#{output_preview} usage=#{usage.inspect}")
         generation&.end(output: output, usage: usage)
         upsert_langfuse_trace(trace: trace, output: output)
