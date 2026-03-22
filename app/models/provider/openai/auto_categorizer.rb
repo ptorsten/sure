@@ -126,14 +126,18 @@ class Provider::Openai::AutoCategorizer
   private
 
     def auto_categorize_openai_native
+      effective_model = model.presence || Provider::Openai::DEFAULT_MODEL
+
       span = langfuse_trace&.span(name: "auto_categorize_api_call", input: {
-        model: model.presence || Provider::Openai::DEFAULT_MODEL,
+        model: effective_model,
+        instructions: instructions,
+        developer_message: developer_message,
         transactions: transactions,
         user_categories: user_categories
       })
 
       response = client.responses.create(parameters: {
-        model: model.presence || Provider::Openai::DEFAULT_MODEL,
+        model: effective_model,
         input: [ { role: "developer", content: developer_message } ],
         text: {
           format: {
@@ -210,11 +214,15 @@ class Provider::Openai::AutoCategorizer
     end
 
     def auto_categorize_with_mode(mode)
+      effective_model = model.presence || Provider::Openai::DEFAULT_MODEL
+
       span = langfuse_trace&.span(name: "auto_categorize_api_call", input: {
-        model: model.presence || Provider::Openai::DEFAULT_MODEL,
+        model: effective_model,
+        json_mode: mode,
+        system_prompt: instructions,
+        user_prompt: developer_message_for_generic,
         transactions: transactions,
-        user_categories: user_categories,
-        json_mode: mode
+        user_categories: user_categories
       })
 
       # Build parameters with configurable JSON response format
